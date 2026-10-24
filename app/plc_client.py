@@ -1,38 +1,50 @@
 import snap7
-
+from snap7.util import get_int, get_bool, get_real, set_int, set_bool, set_real
 
 class PLCClient:
-    """Handles communication with a Siemens S7 PLC."""
-
-    def __init__(self, ip_address: str, rack: int = 0, slot: int = 1):
-        self.ip_address = ip_address
+    def __init__(self, ip: str, rack: int = 0, slot: int = 1):
+        self.ip = ip
         self.rack = rack
         self.slot = slot
-        self.client = snap7.Client()
+        self.client = snap7.client.Client()
 
     def connect(self) -> bool:
-        """Connect to the Siemens PLC."""
-
         try:
-            self.client.connect(
-                self.ip_address,
-                self.rack,
-                self.slot,
-            )
-
+            self.client.connect(self.ip, self.rack, self.slot)
             return self.client.get_connected()
-
-        except Exception as error:
-            print(f"PLC connection failed: {error}")
+        except Exception:
             return False
 
-    def disconnect(self) -> None:
-        """Disconnect from the PLC."""
+    def disconnect(self):
+        try:
+            if self.client.get_connected():
+                self.client.disconnect()
+        except Exception:
+            pass
 
-        if self.client.get_connected():
-            self.client.disconnect()
+    def read_int(self, db_number: int, start: int) -> int:
+        data = self.client.db_read(db_number, start, 2)
+        return get_int(data, 0)
 
-    def is_connected(self) -> bool:
-        """Return the current PLC connection status."""
+    def read_bool(self, db_number: int, start: int, bit_index: int = 0) -> bool:
+        data = self.client.db_read(db_number, start, 1)
+        return get_bool(data, 0, bit_index)
 
-        return self.client.get_connected()
+    def read_float(self, db_number: int, start: int) -> float:
+        data = self.client.db_read(db_number, start, 4)
+        return get_real(data, 0)
+
+    def write_int(self, db_number: int, start: int, value: int):
+        data = bytearray(2)
+        set_int(data, 0, value)
+        self.client.db_write(db_number, start, data)
+
+    def write_bool(self, db_number: int, start: int, bit_index: int, value: bool):
+        data = self.client.db_read(db_number, start, 1)
+        set_bool(data, 0, bit_index, value)
+        self.client.db_write(db_number, start, data)
+
+    def write_float(self, db_number: int, start: int, value: float):
+        data = bytearray(4)
+        set_real(data, 0, value)
+        self.client.db_write(db_number, start, data)

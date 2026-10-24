@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IIoT PLC Inspector & Controller</title>
+    <style>
+        * { box-sizing: border-box; }
+        :root {
+            --bg-deep: #030817;
+            --panel-bg: linear-gradient(145deg, #091a34, #041026);
+            --border-color: #17518c;
+            --cyan: #22d3ee;
+            --green: #13e6ba;
+            --yellow: #ffc857;
+            --text-main: #edf5ff;
+            --text-muted: #829fcf;
+            --field-bg: #061329;
+            --field-border: #234773;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 30px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-main);
+            font-family: "Segoe UI", system-ui, sans-serif;
+            background: radial-gradient(circle at 50% -20%, #10336b 0%, #030817 60%), #020617;
+        }
+
+        .dashboard {
+            width: 100%;
+            max-width: 480px;
+            padding: 28px;
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            background: var(--panel-bg);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #1c3d63;
+            margin-bottom: 22px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .plc-icon-box {
+            width: 54px;
+            height: 54px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(34, 211, 238, 0.5);
+            border-radius: 14px;
+            background: linear-gradient(145deg, #092b50, #04142d);
+            color: var(--cyan);
+            box-shadow: inset 0 0 14px rgba(34, 211, 238, 0.25), 0 4px 12px rgba(0,0,0,0.4);
+        }
+
+        .heading h1 {
+            margin: 0;
+            font-size: 21px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .heading h1 span {
+            color: var(--cyan);
+        }
+
+        .subtitle {
+            margin: 3px 0 0;
+            color: var(--text-muted);
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .online-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 11px;
+            border: 1px solid #087f6a;
+            border-radius: 20px;
+            color: var(--green);
+            background: #06312f;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+        }
+
+        .pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 9px var(--green);
+        }
+
+        /* Mode Selector Tabs */
+        .mode-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 18px;
+            background: #040e22;
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid #17518c;
+        }
+
+        .mode-tab {
+            height: 38px;
+            border: none;
+            border-radius: 9px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-tab.active {
+            background: linear-gradient(135deg, #087bfa, #06b6d4);
+            color: white;
+            box-shadow: 0 4px 15px rgba(7, 139, 255, 0.3);
+        }
+
+        /* Form Layout */
+        .field-group {
+            margin-bottom: 16px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 7px;
+            color: #9cb8e0;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.9px;
+            text-transform: uppercase;
+        }
+
+        label svg {
+            color: var(--cyan);
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        input, select {
+            width: 100%;
+            height: 44px;
+            padding: 0 14px;
+            border: 1px solid var(--field-border);
+            border-radius: 9px;
+            outline: none;
+            background: var(--field-bg);
+            color: var(--text-main);
+            font-size: 13px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
+            transition: border-color 0.2s;
+        }
+
+        input[type="number"] {
+            color-scheme: dark;
+            font-family: Consolas, monospace;
+            padding-right: 36px;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.12);
+        }
+
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322d3ee' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 15px;
+            padding-right: 35px;
+        }
+
+        select option {
+            background: #07162d;
+            color: white;
+        }
+
+        .input-icon-right {
+            position: absolute;
+            right: 13px;
+            color: var(--text-muted);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Action Button */
+        .action-button {
+            width: 100%;
+            height: 48px;
+            margin-top: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #38bdf8;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 45%, #06b6d4 100%);
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(7, 139, 255, 0.28);
+            transition: filter 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .action-button:hover {
+            filter: brightness(1.12);
+            transform: translateY(-1px);
+        }
+
+        .action-button:disabled {
+            cursor: wait;
+            opacity: 0.7;
+        }
+
+        /* Result Panel */
+        .result-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            padding: 18px 14px;
+            border: 1px solid #14509a;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #081b36, #06142a);
+        }
+
+        .result-col {
+            padding: 0 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .result-col + .result-col {
+            border-left: 1px solid rgba(35, 71, 115, 0.5);
+        }
+
+        .result-label-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 7px;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+        }
+
+        .status-content-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-icon-circle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid #087cff66;
+            background: #092b5044;
+            display: grid;
+            place-items: center;
+            color: var(--cyan);
+            flex-shrink: 0;
+        }
+
+        #status {
+            color: var(--yellow);
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        #value-display {
+            color: var(--green);
+            font-family: Consolas, monospace;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        /* Footer */
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            color: #6b88b5;
+            font-size: 11px;
+        }
+
+        .footer-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .footer-slashes {
+            color: var(--cyan);
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: 3px;
+        }
+    </style>
+</head>
+<body>
+    <main class="dashboard">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="plc-icon-box">
+                    <svg width="34" height="34" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="2" y="3" width="28" height="26" rx="3.5" fill="#041229" stroke="#22d3ee" stroke-width="2"/>
+                        <rect x="3.5" y="4.5" width="25" height="23" rx="2.5" fill="url(#rackGrad)" stroke="#087cff" stroke-width="1"/>
+                        <line x1="11" y1="4.5" x2="11" y2="27.5" stroke="#17518c" stroke-width="1.5"/>
+                        <line x1="21" y1="4.5" x2="21" y2="27.5" stroke="#17518c" stroke-width="1.5"/>
+                        <circle cx="6.5" cy="8" r="1.2" fill="#13e6ba" />
+                        <circle cx="6.5" cy="11.5" r="1.2" fill="#22d3ee" />
+                        <rect x="5" y="15" width="3" height="9" rx="0.5" fill="#22d3ee" fill-opacity="0.25" stroke="#22d3ee" stroke-width="0.5"/>
+                        <rect x="13" y="7.5" width="6" height="2" rx="0.5" fill="#829fcf" fill-opacity="0.7"/>
+                        <rect x="13" y="11.5" width="6" height="2" rx="0.5" fill="#829fcf" fill-opacity="0.7"/>
+                        <rect x="13" y="15.5" width="6" height="2" rx="0.5" fill="#829fcf" fill-opacity="0.7"/>
+                        <rect x="13" y="19.5" width="6" height="2" rx="0.5" fill="#829fcf" fill-opacity="0.7"/>
+                        <rect x="13" y="23.5" width="6" height="2" rx="0.5" fill="#829fcf" fill-opacity="0.7"/>
+                        <rect x="23" y="9" width="5" height="6" rx="1.5" fill="#030817" stroke="#22d3ee" stroke-width="1"/>
+                        <circle cx="25.5" cy="20" r="1.2" fill="#ffc857" />
+                        <defs>
+                            <linearGradient id="rackGrad" x1="3.5" y1="4.5" x2="28.5" y2="27.5" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#092d56"/>
+                                <stop offset="100%" stop-color="#020c22"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div class="heading">
+                    <h1>IIoT <span>PLC</span> Inspector</h1>
+                    <p class="subtitle">INDUSTRIAL TELEMETRY & CONTROL</p>
+                </div>
+            </div>
+            <div class="online-badge">
+                <div class="pulse-dot"></div>
+                ONLINE
+            </div>
+        </header>
+
+        <!-- Mode Toggle Tabs -->
+        <div class="mode-tabs">
+            <button type="button" class="mode-tab active" id="mode-read-btn">⚡ Read Tag</button>
+            <button type="button" class="mode-tab" id="mode-write-btn">✍️ Write Tag</button>
+        </div>
+
+        <!-- Form -->
+        <form id="plc-form">
+            <div class="field-group">
+                <label for="ip">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                    PLC IP Address
+                </label>
+                <div class="input-wrapper">
+                    <input id="ip" type="text" value="192.168.0.1" required>
+                    <div class="input-icon-right">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="6" height="6" rx="1"></rect><rect x="16" y="2" width="6" height="6" rx="1"></rect><rect x="9" y="16" width="6" height="6" rx="1"></rect><path d="M5 8v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"></path><line x1="12" y1="12" x2="12" y2="16"></line></svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="field-group">
+                    <label for="db">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                        DB Number
+                    </label>
+                    <div class="input-wrapper">
+                        <input id="db" type="number" min="1" value="1" required>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label for="offset">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                        Byte Offset
+                    </label>
+                    <div class="input-wrapper">
+                        <input id="offset" type="number" min="0" value="0" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2" id="dynamic-grid">
+                <div class="field-group hidden" id="bit-group">
+                    <label for="bit">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="2" width="20" height="20" rx="2"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line></svg>
+                        Bit Index (0 - 7)
+                    </label>
+                    <div class="input-wrapper">
+                        <input id="bit" type="number" min="0" max="7" value="0">
+                    </div>
+                </div>
+                <div class="field-group" id="type-group" style="grid-column: 1 / -1;">
+                    <label for="dtype">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 5h16M4 12h16M4 19h16"></path><circle cx="8" cy="5" r="2" fill="var(--field-bg)"></circle><circle cx="16" cy="12" r="2" fill="var(--field-bg)"></circle><circle cx="10" cy="19" r="2" fill="var(--field-bg)"></circle></svg>
+                        Data Type
+                    </label>
+                    <select id="dtype">
+                        <option value="int">INT (16-bit Signed Integer)</option>
+                        <option value="bool">BOOL (Boolean)</option>
+                        <option value="real">REAL (32-bit Float)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Value Input for Write Mode -->
+            <div class="field-group hidden" id="write-value-group">
+                <label for="write-val">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    Value to Write
+                </label>
+                <div class="input-wrapper">
+                    <input id="write-val" type="text" placeholder="Enter value (e.g. 100, TRUE, 12.5)">
+                </div>
+            </div>
+
+            <button type="submit" class="action-button" id="action-button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                <span id="button-text">Read Tag Value</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+        </form>
+
+        <section class="result-panel">
+            <div class="result-col">
+                <div class="result-label-row">STATUS</div>
+                <div class="status-content-row">
+                    <div class="status-icon-circle">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    </div>
+                    <div id="status">Idle</div>
+                </div>
+            </div>
+            <div class="result-col">
+                <div class="result-label-row">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--cyan);"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                    RESULT
+                </div>
+                <div id="value-display">--</div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <div class="footer-info">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <span>Siemens PLC Inspector & Controller</span>
+            </div>
+            <div class="footer-slashes">///</div>
+        </footer>
+    </main>
+
+    <script>
+        let currentMode = "read";
+
+        const modeReadBtn = document.getElementById("mode-read-btn");
+        const modeWriteBtn = document.getElementById("mode-write-btn");
+        const writeValueGroup = document.getElementById("write-value-group");
+        const buttonText = document.getElementById("button-text");
+        const form = document.getElementById("plc-form");
+        const dtype = document.getElementById("dtype");
+        const bitGroup = document.getElementById("bit-group");
+        const datatypeGroup = document.getElementById("type-group");
+        const statusDisplay = document.getElementById("status");
+        const valueDisplay = document.getElementById("value-display");
+        const actionButton = document.getElementById("action-button");
+
+        // Toggle Read / Write mode
+        modeReadBtn.addEventListener("click", () => {
+            currentMode = "read";
+            modeReadBtn.classList.add("active");
+            modeWriteBtn.classList.remove("active");
+            writeValueGroup.classList.add("hidden");
+            buttonText.textContent = "Read Tag Value";
+        });
+
+        modeWriteBtn.addEventListener("click", () => {
+            currentMode = "write";
+            modeWriteBtn.classList.add("active");
+            modeReadBtn.classList.remove("active");
+            writeValueGroup.classList.remove("hidden");
+            buttonText.textContent = "Write Tag Value";
+        });
+
+        dtype.addEventListener("change", function () {
+            const isBool = dtype.value === "bool";
+            if (isBool) {
+                bitGroup.classList.remove("hidden");
+                datatypeGroup.style.gridColumn = "span 1";
+            } else {
+                bitGroup.classList.add("hidden");
+                datatypeGroup.style.gridColumn = "1 / -1";
+            }
+        });
+
+        form.addEventListener("submit", async function (event) {
+            event.preventDefault();
+            const ip = document.getElementById("ip").value.trim();
+            const db = document.getElementById("db").value;
+            const offset = document.getElementById("offset").value;
+            const bit = document.getElementById("bit").value;
+            const writeVal = document.getElementById("write-val").value;
+
+            statusDisplay.textContent = currentMode === "read" ? "Reading..." : "Writing...";
+            valueDisplay.textContent = "--";
+            actionButton.disabled = true;
+
+            try {
+                let endpoint = currentMode === "read" ? "/read" : "/write";
+                let params = new URLSearchParams({ ip, db, offset, dtype: dtype.value, bit });
+                
+                if (currentMode === "write") {
+                    params.append("value", writeVal);
+                }
+
+                const response = await fetch(`${endpoint}?` + params.toString());
+                const data = await response.json();
+                
+                statusDisplay.textContent = data.status ?? "Complete";
+                valueDisplay.textContent = data.value ?? "--";
+            } catch (error) {
+                statusDisplay.textContent = "Operation Failed";
+                valueDisplay.textContent = "--";
+                console.error("PLC error:", error);
+            } finally {
+                actionButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
