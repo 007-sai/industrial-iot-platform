@@ -12,3 +12,6 @@ starlette==1.7.0
 typing-inspection==0.4.4
 typing_extensions==4.16.0
 uvicorn==0.54.0
+
+pwdlib[argon2]==0.3.1
+itsdangerous==2.2.0
