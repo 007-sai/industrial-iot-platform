@@ -1,2 +1,2 @@
 -r requirements.txt
-pytest
+pytestpytest==9.1.1

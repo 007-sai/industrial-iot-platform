@@ -559,7 +559,9 @@
                     params.append("value", writeVal);
                 }
 
-                const response = await fetch(`${endpoint}?` + params.toString());
+               const response = await fetch(`${endpoint}?` + params.toString(), {
+    method: currentMode === "write" ? "POST" : "GET"
+});
                 const data = await response.json();
                 
                 statusDisplay.textContent = data.status ?? "Complete";
